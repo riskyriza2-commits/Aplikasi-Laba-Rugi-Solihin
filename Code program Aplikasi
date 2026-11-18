@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Akuntansi Laba Rugi - Single File Web App</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); line-height: 1.5; padding-bottom: 2rem; }
+
+        header { background-color: var(--primary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        header h1 { font-size: 1.25rem; font-weight: 700; }
+        .user-badge { background: rgba(255,255,255,0.2); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
+
+        nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.5rem 2rem; display: flex; gap: 0.5rem; overflow-x: auto; }
+        nav button { background: none; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; color: var(--secondary); font-weight: 600; transition: all 0.2s; }
+        nav button.active, nav button:hover { background-color: #eff6ff; color: var(--primary); }
+
+        main { max-width: 1200px; margin: 1.5rem auto; padding: 0 1rem; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card h2 { margin-bottom: 1rem; font-size: 1.1rem; color: var(--primary-dark); border-bottom: 2px solid var(--bg); padding-bottom: 0.5rem; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
+        .form-group label { font-size: 0.875rem; font-weight: 600; color: var(--secondary); }
+        .form-group input, .form-group select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem; font-size: 0.875rem; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+        .btn { background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #15803d; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.875rem; }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background-color: #f1f5f9; font-weight: 600; color: var(--secondary); }
+        tr:hover { background-color: #f8fafc; }
+
+        .summary-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .summary-card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 0.5rem; }
+        .summary-card.expense { background: #fef2f2; border-color: #fecaca; }
+        .summary-card h3 { font-size: 0.875rem; color: var(--secondary); }
+        .summary-card .amount { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Sistem Akuntansi Laba Rugi</h1>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <select id="role-selector" style="padding: 0.25rem 0.5rem; border-radius: 0.25rem;" onchange="switchRole()">
+                <option value="Manager">Role: Manager</option>
+                <option value="Kasir">Role: Kasir</option>
+                <option value="Gudang">Role: Bagian Gudang</option>
+            </select>
+            <span class="user-badge" id="current-user-display">Manager</span>
+        </div>
+    </header>
+
+    <nav id="navigation-bar">
+        <button class="nav-btn active" onclick="showTab('dashboard', event)">Dashboard</button>
+        <button class="nav-btn role-kasir role-manager" onclick="showTab('penjualan', event)">Penjualan (Kasir)</button>
+        <button class="nav-btn role-gudang role-manager" onclick="showTab('pembelian', event)">Pembelian Bahan Baku</button>
+        <button class="nav-btn role-manager" onclick="showTab('master-data', event)">Master Data</button>
+        <button class="nav-btn role-manager" onclick="showTab('laporan', event)">Laporan Keuangan</button>
+    </nav>
+
+    <main>
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="tab-content">
+            <div class="card">
+                <h2>Ringkasan Finansial</h2>
+                <p>Selamat datang di sistem akuntansi berbasis web satu berkas. Gunakan pilihan peranan di header untuk beralih mode akses.</p>
+                <div class="summary-box">
+                    <div class="summary-card">
+                        <h3>Total Pendapatan Penjualan</h3>
+                        <div class="amount" id="dash-pendapatan">Rp 0</div>
+                    </div>
+                    <div class="summary-card expense">
+                        <h3>Total Pembelian Bahan Baku</h3>
+                        <div class="amount" id="dash-pembelian">Rp 0</div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Laba Bersih Operasional</h3>
+                        <div class="amount" id="dash-laba">Rp 0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TRANSAKSI PENJUALAN (KASIR) -->
+        <section id="penjualan" class="tab-content hidden">
+            <div class="card">
+                <h2>Input Transaksi Penjualan Produk</h2>
+                <form id="form-penjualan" onsubmit="handlePenjualan(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Pelanggan</label>
+                            <select id="penjualan-pelanggan" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Produk</label>
+                            <select id="penjualan-produk" required onchange="updateHargaPenjualan()"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Jumlah (Qty)</label>
+                            <input type="number" id="penjualan-qty" min="1" value="1" required oninput="calculateTotalPenjualan()">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Harga (Rp)</label>
+                            <input type="number" id="penjualan-total" readonly>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Simpan Transaksi Penjualan</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Riwayat Transaksi Penjualan</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID Transaksi</th>
+                            <th>Tanggal</th>
+                            <th>Pelanggan</th>
+                            <th>Produk</th>
+                            <th>Qty</th>
+                            <th>Total (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-penjualan"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- PEMBELIAN BAHAN BAKU (GUDANG) -->
+        <section id="pembelian" class="tab-content hidden">
+            <div class="card">
+                <h2>Input Pembelian Bahan Baku</h2>
+                <form id="form-pembelian" onsubmit="handlePembelian(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Bahan Baku</label>
+                            <select id="pembelian-bahan" required onchange="updateHargaPembelian()"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Jumlah Unit</label>
+                            <input type="number" id="pembelian-qty" min="1" value="1" required oninput="calculateTotalPembelian()">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Biaya (Rp)</label>
+                            <input type="number" id="pembelian-total" readonly>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Catat Pembelian</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Riwayat Pembelian Bahan Baku</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID Pembelian</th>
+                            <th>Tanggal</th>
+                            <th>Bahan Baku</th>
+                            <th>Jumlah</th>
+                            <th>Total Biaya (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-pembelian"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- MASTER DATA (MANAGER) -->
+        <section id="master-data" class="tab-content hidden">
+            <div class="card">
+                <h2>Tambah Produk Baru</h2>
+                <form onsubmit="handleTambahProduk(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nama Produk</label>
+                            <input type="text" id="master-nama-produk" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Jenis Produk</label>
+                            <input type="text" id="master-jenis-produk" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Harga Jual (Rp)</label>
+                            <input type="number" id="master-harga-produk" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Tambah Produk</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Katalog Produk & Bahan Baku</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                    <div>
+                        <h3>Daftar Produk</h3>
+                        <table>
+                            <thead><tr><th>Nama</th><th>Jenis</th><th>Harga</th></tr></thead>
+                            <tbody id="table-master-produk"></tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h3>Daftar Bahan Baku</h3>
+                        <table>
+                            <thead><tr><th>Bahan Baku</th><th>Stok</th><th>Harga Beli</th></tr></thead>
+                            <tbody id="table-master-bahan"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LAPORAN (MANAGER) -->
+        <section id="laporan" class="tab-content hidden">
+            <div class="card">
+                <h2>Laporan Laba Rugi Otomatis</h2>
+                <table>
+                    <tbody>
+                        <tr style="font-weight: bold; background: #f1f5f9;"><td colspan="2">PENDAPATAN OPERASIONAL</td></tr>
+                        <tr><td>Pendapatan Penjualan Produk</td><td id="lap-pendapatan">Rp 0</td></tr>
+                        <tr style="font-weight: bold; background: #f1f5f9;"><td colspan="2">BEBAN OPERASIONAL & BAHAN BAKU</td></tr>
+                        <tr><td>Biaya Pembelian Bahan Baku</td><td id="lap-beban">Rp 0</td></tr>
+                        <tr style="font-weight: bold; font-size: 1.1rem; background: #e2e8f0;">
+                            <td>LABA BERSIH OPERASIONAL</td>
+                            <td id="lap-laba-bersih">Rp 0</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Jurnal Umum Otomatis</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Keterangan Transaksi</th>
+                            <th>Debit (Rp)</th>
+                            <th>Kredit (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-jurnal"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const defaultData = {
+            pelanggan: [
+                { id: 1, nama: 'Depot Fajar Jaya', no_hp: '08123456789' },
+                { id: 2, nama: 'Pelanggan Umum', no_hp: '-' }
+            ],
+            produk: [
+                { id: 101, nama: 'Kayu Olahan Balok', jenis: 'Kayu', harga: 150000 },
+                { id: 102, nama: 'Papan Sektor A', jenis: 'Papan', harga: 85000 }
+            ],
+            bahanBaku: [
+                { id: 201, nama: 'Kayu Gelondongan Murni', stok: 50, hargaBeli: 90000 },
+                { id: 202, nama: 'Paku & Perekat Industri', stok: 100, hargaBeli: 15000 }
+            ],
+            penjualan: [],
+            pembelian: []
+        };
+
+        function getDB() {
+            const data = localStorage.getItem('accounting_db');
+            return data ? JSON.parse(data) : defaultData;
+        }
+
+        function saveDB(db) {
+            localStorage.setItem('accounting_db', JSON.stringify(db));
+            refreshAllViews();
+        }
+
+        function switchRole() {
+            const role = document.getElementById('role-selector').value;
+            document.getElementById('current-user-display').innerText = role;
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.add('hidden');
+                if (role === 'Manager') btn.classList.remove('hidden');
+                if (role === 'Kasir' && (btn.classList.contains('role-kasir') || btn.innerText.includes('Dashboard'))) btn.classList.remove('hidden');
+                if (role === 'Gudang' && (btn.classList.contains('role-gudang') || btn.innerText.includes('Dashboard'))) btn.classList.remove('hidden');
+            });
+            showTab('dashboard');
+        }
+
+        function showTab(tabId, evt) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.remove('hidden');
+            if (evt && evt.target) evt.target.classList.add('active');
+        }
+
+        function refreshAllViews() {
+            const db = getDB();
+
+            const pelSelect = document.getElementById('penjualan-pelanggan');
+            pelSelect.innerHTML = db.pelanggan.map(p => `<option value="${p.id}">${p.nama}</option>`).join('');
+
+            const prodSelect = document.getElementById('penjualan-produk');
+            prodSelect.innerHTML = db.produk.map(p => `<option value="${p.id}" data-harga="${p.harga}">${p.nama} (Rp ${p.harga.toLocaleString()})</option>`).join('');
+
+            const bahanSelect = document.getElementById('pembelian-bahan');
+            bahanSelect.innerHTML = db.bahanBaku.map(b => `<option value="${b.id}" data-harga="${b.hargaBeli}">${b.nama} (Stok: ${b.stok})</option>`).join('');
+
+            const totalPendapatan = db.penjualan.reduce((sum, item) => sum + item.total, 0);
+            const totalPembelian = db.pembelian.reduce((sum, item) => sum + item.total, 0);
+            const labaBersih = totalPendapatan - totalPembelian;
+
+            document.getElementById('dash-pendapatan').innerText = `Rp ${totalPendapatan.toLocaleString()}`;
+            document.getElementById('dash-pembelian').innerText = `Rp ${totalPembelian.toLocaleString()}`;
+            document.getElementById('dash-laba').innerText = `Rp ${labaBersih.toLocaleString()}`;
+
+            document.getElementById('lap-pendapatan').innerText = `Rp ${totalPendapatan.toLocaleString()}`;
+            document.getElementById('lap-beban').innerText = `Rp ${totalPembelian.toLocaleString()}`;
+            document.getElementById('lap-laba-bersih').innerText = `Rp ${labaBersih.toLocaleString()}`;
+
+            document.getElementById('table-penjualan').innerHTML = db.penjualan.map(p => `
+                <tr>
+                    <td>#PJ-${p.id}</td>
+                    <td>${p.tanggal}</td>
+                    <td>${p.namaPelanggan}</td>
+                    <td>${p.namaProduk}</td>
+                    <td>${p.qty}</td>
+                    <td>Rp ${p.total.toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('table-pembelian').innerHTML = db.pembelian.map(b => `
+                <tr>
+                    <td>#PB-${b.id}</td>
+                    <td>${b.tanggal}</td>
+                    <td>${b.namaBahan}</td>
+                    <td>${b.qty}</td>
+                    <td>Rp ${b.total.toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('table-master-produk').innerHTML = db.produk.map(p => `
+                <tr><td>${p.nama}</td><td>${p.jenis}</td><td>Rp ${p.harga.toLocaleString()}</td></tr>
+            `).join('');
+
+            document.getElementById('table-master-bahan').innerHTML = db.bahanBaku.map(b => `
+                <tr><td>${b.nama}</td><td>${b.stok}</td><td>Rp ${b.hargaBeli.toLocaleString()}</td></tr>
+            `).join('');
+
+            let jurnalHTML = '';
+            db.penjualan.forEach(p => {
+                jurnalHTML += `<tr><td>${p.tanggal}</td><td>Kas (Penjualan #${p.id})</td><td>Rp ${p.total.toLocaleString()}</td><td>-</td></tr>`;
+                jurnalHTML += `<tr><td>${p.tanggal}</td><td>&nbsp;&nbsp;Pendapatan Penjualan</td><td>-</td><td>Rp ${p.total.toLocaleString()}</td></tr>`;
+            });
+            db.pembelian.forEach(b => {
+                jurnalHTML += `<tr><td>${b.tanggal}</td><td>Beban Pembelian Bahan Baku (#${b.id})</td><td>Rp ${b.total.toLocaleString()}</td><td>-</td></tr>`;
+                jurnalHTML += `<tr><td>${b.tanggal}</td><td>&nbsp;&nbsp;Kas</td><td>-</td><td>Rp ${b.total.toLocaleString()}</td></tr>`;
+            });
+            document.getElementById('table-jurnal').innerHTML = jurnalHTML;
+
+            updateHargaPenjualan();
+            updateHargaPembelian();
+        }
+
+        function updateHargaPenjualan() {
+            const select = document.getElementById('penjualan-produk');
+            if (!select.options[select.selectedIndex]) return;
+            const harga = select.options[select.selectedIndex].getAttribute('data-harga');
+            const qty = document.getElementById('penjualan-qty').value;
+            document.getElementById('penjualan-total').value = harga * qty;
+        }
+
+        function calculateTotalPenjualan() { updateHargaPenjualan(); }
+
+        function updateHargaPembelian() {
+            const select = document.getElementById('pembelian-bahan');
+            if (!select.options[select.selectedIndex]) return;
+            const harga = select.options[select.selectedIndex].getAttribute('data-harga');
+            const qty = document.getElementById('pembelian-qty').value;
+            document.getElementById('pembelian-total').value = harga * qty;
+        }
+
+        function calculateTotalPembelian() { updateHargaPembelian(); }
+
+        function handlePenjualan(e) {
+            e.preventDefault();
+            const db = getDB();
+            const prodSelect = document.getElementById('penjualan-produk');
+            const pelSelect = document.getElementById('penjualan-pelanggan');
+
+            const transaksiBaru = {
+                id: Date.now(),
+                tanggal: new Date().toISOString().split('T')[0],
+                namaPelanggan: pelSelect.options[pelSelect.selectedIndex].text,
+                namaProduk: prodSelect.options[prodSelect.selectedIndex].text.split(' (')[0],
+                qty: parseInt(document.getElementById('penjualan-qty').value),
+                total: parseInt(document.getElementById('penjualan-total').value)
+            };
+
+            db.penjualan.push(transaksiBaru);
+            saveDB(db);
+            alert('Transaksi penjualan berhasil dicatat!');
+        }
+
+        function handlePembelian(e) {
+            e.preventDefault();
+            const db = getDB();
+            const bahanSelect = document.getElementById('pembelian-bahan');
+            const bahanId = parseInt(bahanSelect.value);
+            const qty = parseInt(document.getElementById('pembelian-qty').value);
+
+            const transaksiBaru = {
+                id: Date.now(),
+                tanggal: new Date().toISOString().split('T')[0],
+                namaBahan: bahanSelect.options[bahanSelect.selectedIndex].text.split(' (')[0],
+                qty: qty,
+                total: parseInt(document.getElementById('pembelian-total').value)
+            };
+
+            const bahan = db.bahanBaku.find(b => b.id === bahanId);
+            if (bahan) bahan.stok += qty;
+
+            db.pembelian.push(transaksiBaru);
+            saveDB(db);
+            alert('Pembelian bahan baku berhasil dicatat!');
+        }
+
+        function handleTambahProduk(e) {
+            e.preventDefault();
+            const db = getDB();
+            db.produk.push({
+                id: Date.now(),
+                nama: document.getElementById('master-nama-produk').value,
+                jenis: document.getElementById('master-jenis-produk').value,
+                harga: parseInt(document.getElementById('master-harga-produk').value)
+            });
+            saveDB(db);
+            alert('Produk baru berhasil ditambahkan!');
+        }
+
+        window.onload = () => {
+            if (!localStorage.getItem('accounting_db')) saveDB(defaultData);
+            switchRole();
+            refreshAllViews();
+        };
+    </script>
+</body>
+</html>
